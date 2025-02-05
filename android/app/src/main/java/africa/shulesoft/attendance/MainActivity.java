@@ -66,22 +66,33 @@ public class MainActivity extends FlutterActivity {
                 String userId = call.argument("userId");
                 Log.i(TAG, "User ID: " + userId);
 
+                // Add more robust error handling
+                if (fingerSDK == null) {
+                    Log.e(TAG, "FingerSDK not initialized");
+                    result.error("SDK_NOT_INITIALIZED", "Fingerprint SDK is not initialized", null);
+                    return;
+                }
+
                 fingerSDK.enroll(userId, new OnEnrollListener() {
                     @Override
-                    public void enroll(int i, Bitmap bitmap, String s) {
-                        if (i == FingerSDK.RESULT_OK) {
-                            updateFingerBitmap(bitmap);
-                            ByteArrayOutputStream stream = new ByteArrayOutputStream();
-                            bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
-                            byte[] byteArray = stream.toByteArray();
-                            result.success(byteArray);
-                            bitmap.recycle();
-                            Log.i(TAG, "Enrollment success. User ID: " + userId);
-                        } else {
-                            Log.i(TAG, "Enrollment failed");
-                            if (bitmap != null) {
+                    public void enroll(int resultCode, Bitmap bitmap, String errorMsg) {
+                        Log.i(TAG, "Enrollment Result Code: " + resultCode);
+                        Log.i(TAG, "Error Message: " + errorMsg);
+
+                        switch (resultCode) {
+                            case FingerSDK.RESULT_OK:
+                                // Success case
                                 updateFingerBitmap(bitmap);
-                            }
+                                ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                                byte[] byteArray = stream.toByteArray();
+                                result.success(byteArray);
+                                bitmap.recycle();
+                                Log.i(TAG, "Enrollment success. User ID: " + userId);
+                                break;
+                            default:
+                                result.error("ENROLLMENT_FAILED", "Fingerprint enrollment failed. Code: " + resultCode, null);
+                                break;
                         }
                     }
                 }, FingerSDK.TEMPLEATES.GAT_1012_2019);
@@ -184,23 +195,33 @@ public class MainActivity extends FlutterActivity {
     }
 
     private void initFunction() {
+        if (fingerSDK == null) {
+            fingerSDK = new FingerSDK(getApplicationContext());
+        }
+
         fingerSDK.init(new OnSdkInitListener() {
             @Override
-            public void initResult(int i, String s) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (i != FingerSDK.RESULT_OK) {
-                            AlertDialog retryDialog = new AlertDialog.Builder(MainActivity.this).setCancelable(false).setTitle("INIT").setMessage(s).setPositiveButton("Try Again", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
+            public void initResult(int resultCode, String message) {
+                runOnUiThread(() -> {
+                    Log.d(TAG, "SDK Init Result: " + resultCode + " - " + message);
+
+                    if (resultCode != FingerSDK.RESULT_OK) {
+                        // More detailed logging
+                        Log.e(TAG, "SDK Initialization Failed. Code: " + resultCode + ", Message: " + message);
+
+                        AlertDialog retryDialog = new AlertDialog.Builder(MainActivity.this)
+                                .setCancelable(false)
+                                .setTitle("SDK Initialization")
+                                .setMessage("Failed to initialize fingerprint SDK. Error: " + message)
+                                .setPositiveButton("Try Again", (dialog, which) -> {
                                     dialog.dismiss();
                                     initFunction();
-                                }
-                            }).create();
-                            retryDialog.show();
-                        }
-                        Toast.makeText(MainActivity.this, i != FingerSDK.RESULT_OK ? "dev error:" + i + "-" + s : "dev success:" + s, Toast.LENGTH_SHORT).show();
+                                })
+                                .setNegativeButton("Cancel", (dialog, which) -> finish())
+                                .create();
+                        retryDialog.show();
+                    } else {
+                        Log.i(TAG, "SDK Initialized Successfully");
                     }
                 });
             }

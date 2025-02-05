@@ -41,9 +41,9 @@ class _FingerScanResultState extends State<FingerScanResult> {
       });
       Future.delayed(const Duration(seconds: 1), () {
         switch (widget.userType) {
-          case 'student':
+          case 'stundent':
             _locator<LoginRepository>().enrollStudent(widget.userId);
-            _locator<LoginRepository>().updateSummary('student');
+            _locator<LoginRepository>().updateSummary('stundent');
           case 'staff':
             _locator<LoginRepository>().enrollStaff(widget.userId);
             _locator<LoginRepository>().updateSummary('staffs');

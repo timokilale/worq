@@ -1,4 +1,5 @@
 import 'package:attendance/ui/finger_scan_result.dart';
+import 'package:attendance/ui/students.dart';
 import 'package:attendance/ui/widgets/common/custom_icon.dart';
 import 'package:attendance/utils/actions/common_actions.dart';
 import 'package:flutter/material.dart';
@@ -33,7 +34,8 @@ class FingerScanner extends StatefulWidget {
 class _FingerScannerState extends State<FingerScanner> {
   Uint8List finger = Uint8List(0);
   static const platformMethodChannel =
-      MethodChannel('africa.shulesoft.attendance/device-sdk');
+  MethodChannel('africa.shulesoft.attendance/device-sdk');
+  bool _isScanning = false;
 
   Future<Uint8List> _captureFingerprint() async {
     Uint8List fingerImage;
@@ -41,12 +43,23 @@ class _FingerScannerState extends State<FingerScanner> {
       _locator<Logger>().i("Invoking enrollFingerprint()");
       fingerImage = await platformMethodChannel.invokeMethod(
           'enrollFingerprint',
-          {'userId': '${widget.userType}_${widget.userId}'});
+          {'userId': '${widget.userType}_${widget.userId}'}
+      );
       setState(() {
         finger = fingerImage;
       });
     } on PlatformException catch (e) {
       _locator<Logger>().e(e.message);
+      // Show error to user and allow retry
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Fingerprint quality too low. Please try again.'),
+          action: SnackBarAction(
+            label: 'Retry',
+            onPressed: _captureFingerprint,
+          ),
+        ),
+      );
       fingerImage = Uint8List(0);
     }
     return fingerImage;
@@ -62,7 +75,7 @@ class _FingerScannerState extends State<FingerScanner> {
           context,
           FingerScanResult(
             finger: capturedBitmap,
-            screen: widget.prevScreen,
+            screen: Students(),
             userId: widget.userId,
             userType: widget.userType,
           ),
@@ -73,8 +86,30 @@ class _FingerScannerState extends State<FingerScanner> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isScanning) {
+      CircularProgressIndicator();
+    } else {
+      ElevatedButton(
+        onPressed: () {
+          setState(() => _isScanning = true);
+          _captureFingerprint().then((_) {
+            setState(() => _isScanning = false);
+          });
+        },
+        child: Text('Scan Fingerprint'),
+      );
+    }
     return Scaffold(
-      body: SafeArea(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          title: Text('Back'),
+        ),
+        body: SafeArea(
         child: SizedBox(
           height: MediaQuery.of(context).size.height,
           width: MediaQuery.of(context).size.width,
@@ -103,6 +138,8 @@ class _FingerScannerState extends State<FingerScanner> {
           ),
         ),
       ),
+
     );
+
   }
 }

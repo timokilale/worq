@@ -17,7 +17,6 @@ import 'package:attendance/services/service_locator.dart';
 import 'package:attendance/ui/login_screen.dart';
 import 'package:attendance/utils/actions/common_actions.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 //import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -59,7 +58,6 @@ void main() async {
   await Hive.openBox(StorageKeys.attendanceBox);
   HttpOverrides.global = MyHttpOverrides();
   serviceLocatorInit();
-  debugPaintSizeEnabled = false;
   runApp(const Attendance());
 }
 
